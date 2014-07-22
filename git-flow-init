@@ -330,6 +330,8 @@ cmd_default() {
 		echo $(git flow sprint start 1)
 	fi
 
+	# Set default behaviour of git to current
+	git_do config push.default "current"
 
 	# TODO: what to do with origin?
 }
