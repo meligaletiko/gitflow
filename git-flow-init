@@ -346,10 +346,93 @@ cmd_default() {
 	# Set default behaviour of git to current
 	git_do config push.default "current"
 
+	# Enable pull request
+	if ! git config --get gitflow.pullrequest.enabled >/dev/null 2>&1 || flag force; then
+		default_suggestion=$(git config --get gitflow.pullrequest.enabled || echo "N")
+		printf "Enable pull request feature? [$default_suggestion] "
+		if noflag defaults; then
+			read answer
+		else
+			printf "\n"
+		fi
+	fi
+
+	if [ "$answer" = "Y" ]; then
+		git_do config gitflow.pullrequest.enabled "Y"
+		if check_github_helper; then
+			configure_fork_for_pull_requests
+		else
+			die "Install hub and run again git flow init -f"
+		fi
+	else
+		exit 1
+	fi
+
+
 	# TODO: what to do with origin?
 }
 
 cmd_help() {
 	usage
 	exit 0
+}
+
+# Help funcions
+
+check_github_helper() {
+	if hash hub 2>/dev/null; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+configure_fork_for_pull_requests() {
+	if ! git config --get gitflow.pullrequest.remote.name >/dev/null 2>&1 || flag force; then
+		default_suggestion=$(git config --get gitflow.pullrequest.remote.name || echo "main")
+		printf "Remote for pull requests? [$default_suggestion] "
+		if noflag defaults; then
+			read answer
+		else
+			printf "\n"
+		fi
+
+		if [ "$answer" = "-" ] || [ -z "$answer" ] ; then
+			remotename=$default_suggestion
+		else
+			remotename=$answer
+		fi
+
+		git_do config gitflow.pullrequest.remote.name "$remotename"
+
+		if ! git config --get gitflow.pullrequest.remote.url >/dev/null 2>&1 || flag force; then
+			printf "URL for $remotename ? "
+			read answer
+
+			if [ "$answer" = "-" ] || [ -z "$answer" ]; then
+				git_do config gitflow.pullrequest.enabled "N"
+				exit 0
+			fi
+
+			git_do config gitflow.pullrequest.remote.url "$answer"
+		fi
+
+		if ! git config --get gitflow.pullrequest.remote.branch >/dev/null 2>&1 || flag force; then
+			default_suggestion=$(git config --get gitflow.pullrequest.remote.branch || echo "master")
+			printf "Remote branch? [$default_suggestion] "
+			if noflag defaults; then
+				read answer
+			else
+				printf "\n"
+			fi
+			[ "$answer" = "-" ] && prefix= || prefix=${answer:-$default_suggestion}
+
+			git_do config gitflow.pullrequest.remote.branch "$prefix"
+
+			git_do remote add -f -t $(git config --get gitflow.pullrequest.remote.branch) $(git config --get gitflow.pullrequest.remote.name) $(git config --get gitflow.pullrequest.remote.url)
+
+			git_do config --global hub.protocol https
+
+		fi
+	fi
 }

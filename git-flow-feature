@@ -54,6 +54,7 @@ usage() {
 	echo "       git flow feature rebase [-i] [<name|nameprefix>]"
 	echo "       git flow feature checkout [<name|nameprefix>]"
 	echo "       git flow feature pull [-r] <remote> [<name>]"
+  echo "       git flow feature pullrequest"
 }
 
 cmd_default() {
@@ -530,11 +531,35 @@ cmd_pull() {
 	fi
 }
 
+cmd_pullrequest() {
+  # Load the name of branch
+  name_or_current
+
+  # Only proceeds if the tree is cleaning
+  require_clean_working_tree
+
+  # Load all the required variables needed for pull request
+  require_args_for_pull_request
+
+  hub pull-request -b $REMOTE_BRANCH
+}
+
 load_prefix_with_sprint() {
   PREFIX=$(git config --get gitflow.prefix.feature)
   SPRINT=$(git config --get gitflow.sprint.current)
 
   if [ -n $SPRINT ]; then
     PREFIX=$SPRINT$PREFIX
+  fi
+}
+
+require_args_for_pull_request () {
+  local pullrequestenabled=$(git config --get gitflow.pullrequest.enabled)
+
+  if [ "$pullrequestenabled" = "Y" ]; then
+    REMOTE=$(git config --get gitflow.pullrequest.remote.name)
+    REMOTE_BRANCH=$(git config --get gitflow.pullrequest.remote.name):$(git config --get gitflow.pullrequest.remote.branch)
+  else
+    die "Pull request feature disabled."
   fi
 }
