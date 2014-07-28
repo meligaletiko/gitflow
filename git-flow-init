@@ -415,6 +415,8 @@ configure_fork_for_pull_requests() {
 			fi
 
 			git_do config gitflow.pullrequest.remote.url "$answer"
+
+			parse_url_into_configs "$answer"
 		fi
 
 		if ! git config --get gitflow.pullrequest.remote.branch >/dev/null 2>&1 || flag force; then
@@ -429,10 +431,27 @@ configure_fork_for_pull_requests() {
 
 			git_do config gitflow.pullrequest.remote.branch "$prefix"
 
-			git_do remote add -f -t $(git config --get gitflow.pullrequest.remote.branch) $(git config --get gitflow.pullrequest.remote.name) $(git config --get gitflow.pullrequest.remote.url)
+			# local cenas=$(git remote -v | grep "$remotename")
+			# echo $cenas
+
+			if [ ! -z "$(git remote -v | grep "$remotename")" ]; then
+				git_do fetch "$remotename"
+			else
+				git_do remote add -f -t $(git config --get gitflow.pullrequest.remote.branch) $(git config --get gitflow.pullrequest.remote.name) $(git config --get gitflow.pullrequest.remote.url)
+			fi
 
 			git_do config --global hub.protocol https
 
 		fi
 	fi
+}
+
+parse_url_into_configs() {
+	local url=$1
+
+	local array
+	IFS='/' read -a array <<< "$(echo "$url" | sed 's/://g' | sed 's/\.git//g' | sed 's/\(.*github.com\)//g' | sed 's/^\///')"
+
+	git_do config gitflow.pullrequest.remote.user "${array[0]}"
+	git_do config gitflow.pullrequest.remote.project "${array[1]}"
 }
