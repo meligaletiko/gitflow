@@ -326,3 +326,33 @@ require_branches_equal() {
 		fi
 	fi
 }
+
+require_args_for_pull_request () {
+	local pullrequestenabled=$(git config --get gitflow.pullrequest.enabled)
+
+	if [ "$pullrequestenabled" = "Y" ]; then
+		local user=$(git config --get gitflow.pullrequest.remote.user)
+		local project=$(git config --get gitflow.pullrequest.remote.project)
+		REMOTE_BRANCH=$user/$project:$(git config --get gitflow.pullrequest.remote.branch)
+	else
+		die "Pull request feature disabled."
+	fi
+}
+
+use_current_feature_branch_name() {
+	local current_branch=$(git_current_branch)
+	if startswith "$current_branch" "$PREFIX"; then
+		BRANCH=$current_branch
+		NAME=${BRANCH#$PREFIX}
+	else
+		warn "The current HEAD is no feature branch."
+		warn "Please specify a <name> argument."
+		exit 1
+	fi
+}
+
+name_or_current() {
+	if [ -z "$NAME" ]; then
+		use_current_feature_branch_name
+	fi
+}
