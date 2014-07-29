@@ -59,7 +59,7 @@ min() { [ "$1" -le "$2" ] && echo "$1" || echo "$2"; }
 max() { [ "$1" -ge "$2" ] && echo "$1" || echo "$2"; }
 
 # basic string matching
-startswith() { [ "$1" != "${1#$2}" ]; }
+startswith() { [ "$1" == "${1#$2}" ]; }
 endswith() { [ "$1" != "${1%$2}" ]; }
 
 # convenience functions for checking shFlags flags
@@ -341,6 +341,7 @@ require_args_for_pull_request () {
 
 use_current_feature_branch_name() {
 	local current_branch=$(git_current_branch)
+
 	if startswith "$current_branch" "$PREFIX"; then
 		BRANCH=$current_branch
 		NAME=${BRANCH#$PREFIX}
