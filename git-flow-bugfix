@@ -164,16 +164,6 @@ cmd_pullrequest() {
   hub pull-request -b $REMOTE_BRANCH
 }
 
-load_prefix_with_sprint() {
-  PREFIX=$(git config --get gitflow.prefix.feature)
-  SPRINT=$(git config --get gitflow.sprint.current)
-
-  if [ -n $SPRINT ]; then
-    PREFIX=$SPRINT$PREFIX
-  fi
-}
-
-
 # Helper functions
 
 load_prefix_with_sprint() {
