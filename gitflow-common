@@ -180,8 +180,7 @@ gitflow_has_prefixes_configured() {
 	git config --get gitflow.prefix.release >/dev/null 2>&1     && \
 	git config --get gitflow.prefix.hotfix >/dev/null 2>&1      && \
 	git config --get gitflow.prefix.support >/dev/null 2>&1     && \
-	git config --get gitflow.prefix.versiontag >/dev/null 2>&1	&& \
-	git config --get gitflow.prefix.sprint >/dev/null 2>&1
+	git config --get gitflow.prefix.versiontag >/dev/null 2>&1
 }
 
 gitflow_is_initialized() {
