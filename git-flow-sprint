@@ -37,6 +37,7 @@
 #
 
 init() {
+  sprint_enabled
   require_git_repo
   require_gitflow_initialized
   gitflow_load_settings
@@ -108,4 +109,10 @@ parse_args() {
   # read arguments into global variables
   NUMBER=$1
   SPRINT=$PREFIX$NUMBER
+}
+
+sprint_enabled() {
+  if [ "$(git config --get gitflow.sprint.enabled)" == "N" ]; then
+    die "Sprint support not enabled. Re-run git flow init -f to enable it."
+  fi
 }

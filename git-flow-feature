@@ -528,7 +528,11 @@ cmd_pullrequest() {
 
 load_prefix_with_sprint() {
   PREFIX=$(git config --get gitflow.prefix.feature)
-  SPRINT=$(git config --get gitflow.sprint.current)
+  if [ "$(git config --get gitflow.sprint.enabled)" == "Y" ]; then
+    SPRINT=$(git config --get gitflow.sprint.current)
+  else
+    SPRINT=""
+  fi
 
   if [ -n $SPRINT ]; then
     PREFIX=$SPRINT$PREFIX
