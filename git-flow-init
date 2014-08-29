@@ -325,22 +325,39 @@ cmd_default() {
 	fi
 
 
-	# Sprint prefix
-	if ! git config --get gitflow.prefix.sprint >/dev/null 2>&1 || flag force; then
-		default_suggestion=$(git config --get gitflow.prefix.sprint || echo "sprint-")
-		printf "Sprint prefix? [$default_suggestion] "
-
+	# Sprint support enabled?
+	if ! git config --get gitflow.sprint.enabled >/dev/null 2>&1 || flag force; then
+		default_suggestion=$(git config --get gitflow.sprint.enabled || echo "N")
+		printf "Enable sprint support? [$default_suggestion] "
 		if noflag defaults; then
 			read answer
 		else
-			printf "\n"
+			print "\n"
 		fi
-		[ "$answer" = "-" ] && prefix= || prefix=${answer:-$default_suggestion}
-		git_do config gitflow.prefix.sprint "$prefix"
 	fi
 
-	if [ ! -z $prefix ]; then
-		echo $(git flow sprint start 1)
+	if [ "answer" = "Y" ]; then
+		git_do config gitflow.sprint.enabled "Y"
+
+		# Sprint prefix
+		if ! git config --get gitflow.prefix.sprint >/dev/null 2>&1 || flag force; then
+			default_suggestion=$(git config --get gitflow.prefix.sprint || echo "sprint-")
+			printf "Sprint prefix? [$default_suggestion] "
+
+			if noflag defaults; then
+				read answer
+			else
+				printf "\n"
+			fi
+			[ "$answer" = "-" ] && prefix= || prefix=${answer:-$default_suggestion}
+			git_do config gitflow.prefix.sprint "$prefix"
+
+			if [ ! -z $prefix ]; then
+				echo $(git flow sprint start 1)
+			fi
+		fi
+	else
+		git_do config gitflow.sprint.enabled "N"
 	fi
 
 	# Set default behaviour of git to current

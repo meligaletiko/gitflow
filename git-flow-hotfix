@@ -41,7 +41,8 @@ init() {
   require_gitflow_initialized
   gitflow_load_settings
   VERSION_PREFIX=$(eval "echo `git config --get gitflow.prefix.versiontag`")
-  PREFIX=$(git config --get gitflow.prefix.hotfix)
+  load_prefix_with_sprint
+  # PREFIX=$(git config --get gitflow.prefix.hotfix)
 }
 
 usage() {
@@ -346,4 +347,17 @@ cmd_finish() {
 		echo "- '$DEVELOP_BRANCH', '$MASTER_BRANCH' and tags have been pushed to '$ORIGIN'"
 	fi
 	echo
+}
+
+load_prefix_with_sprint() {
+  PREFIX=$(git config --get gitflow.prefix.hotfix)
+  if [ "$(git config --get gitflow.sprint.enabled)" == "Y" ]; then
+    SPRINT=$(git config --get gitflow.sprint.current)
+  else
+    SPRINT=""
+  fi
+
+  if [ -n $SPRINT ]; then
+    PREFIX=$SPRINT$PREFIX
+  fi
 }
