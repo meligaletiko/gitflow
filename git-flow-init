@@ -335,7 +335,7 @@ cmd_default() {
 		fi
 	fi
 
-	if [ "answer" = "Y" ]; then
+	if [ "$answer" = "Y" ]; then
 		git_do config gitflow.sprint.enabled "Y"
 
 		# Sprint prefix
