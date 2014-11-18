@@ -230,14 +230,20 @@ cmd_default() {
 
 	# finally, ask the user for naming conventions (branch and tag prefixes)
 	if flag force || \
-	   ! git config --get gitflow.prefix.feature >/dev/null 2>&1 ||
-		 ! git config --get gitflow.prefix.bugfix >/dev/null 2>&1 ||
-	   ! git config --get gitflow.prefix.release >/dev/null 2>&1 ||
-	   ! git config --get gitflow.prefix.hotfix >/dev/null 2>&1 ||
-	   ! git config --get gitflow.prefix.support >/dev/null 2>&1 ||
-	   ! git config --get gitflow.prefix.versiontag >/dev/null 2>&1 ; then
+		! git config --get gitflow.prefix.feature >/dev/null 2>&1 ||
+		! git config --get gitflow.prefix.bugfix >/dev/null 2>&1 ||
+		! git config --get gitflow.prefix.release >/dev/null 2>&1 ||
+		! git config --get gitflow.prefix.hotfix >/dev/null 2>&1 ||
+		! git config --get gitflow.prefix.support >/dev/null 2>&1 ||
+		! git config --get gitflow.prefix.versiontag >/dev/null 2>&1 ; then
 		echo
 		echo "How to name your supporting branch prefixes?"
+	else
+		if [ "$(git config --get gitflow.sprint.enabled)" == "Y" ]) ] && 
+			! git config --get gitflow.prefix.sprint >/dev/null 2>&1 ; then
+			echo
+			echo "Which prefix should we use for sprint?"
+		fi
 	fi
 
 	local prefix
