@@ -239,7 +239,7 @@ cmd_default() {
 		echo
 		echo "How to name your supporting branch prefixes?"
 	else
-		if [ "$(git config --get gitflow.sprint.enabled)" == "Y" ]) ] && 
+		if [ "$(git config --get gitflow.sprint.enabled)" == "Y" ] && 
 			! git config --get gitflow.prefix.sprint >/dev/null 2>&1 ; then
 			echo
 			echo "Which prefix should we use for sprint?"
