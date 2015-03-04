@@ -47,6 +47,7 @@ init() {
 usage() {
   echo "usage: git flow sprint [list]"
   echo "       git flow sprint start <number>"
+  echo "       git flow sprint end <number>"
 }
 
 cmd_default() {
@@ -93,6 +94,25 @@ cmd_start() {
   git_do config gitflow.sprint.current "$SPRINT/"
 }
 
+cmd_end() {
+  parse_args "$@"
+
+  local sprints=$(get_sprints)
+
+  local sprint
+  for sprint in $sprints; do
+    if [ "$sprint" = "$current_sprint" ]; then
+      printf "* "
+    else
+      printf "  "
+    fi
+
+    printf "%s" "$sprint"
+
+    echo
+  done
+}
+
 cmd_help() {
   usage
   exit 0
@@ -100,6 +120,15 @@ cmd_help() {
 
 
 # Helper functions
+
+get_sprints() {
+  local sprints
+
+  sprints=$(echo "$(git_local_branches)" | grep "^$PREFIX" | cut -d / -f1)
+  sprints=$(echo "${sprints}" | sort -u)
+
+  echo "$sprints"
+}
 
 parse_args() {
   # parse options
