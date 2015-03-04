@@ -36,11 +36,14 @@
 # policies, either expressed or implied, of Vincent Driessen.
 #
 
-require_git_repo
-require_gitflow_initialized
-gitflow_load_settings
-VERSION_PREFIX=$(eval "echo `git config --get gitflow.prefix.versiontag`")
-PREFIX=$(git config --get gitflow.prefix.support)
+init() {
+  require_git_repo
+  require_gitflow_initialized
+  gitflow_load_settings
+  VERSION_PREFIX=$(eval "echo `git config --get gitflow.prefix.versiontag`")
+  load_prefix_with_sprint
+  # PREFIX=$(git config --get gitflow.prefix.support)
+}
 
 warn "note: The support subcommand is still very EXPERIMENTAL!"
 warn "note: DO NOT use it in a production situation."
@@ -167,16 +170,29 @@ cmd_start() {
 
 	# fetch remote changes
 	if flag fetch; then
-		git fetch -q "$ORIGIN" "$BASE"
+		git_do fetch -q "$ORIGIN" "$BASE"
 	fi
 	require_branch_absent "$BRANCH"
 
 	# create branch
-	git checkout -b "$BRANCH" "$BASE"
+	git_do checkout -b "$BRANCH" "$BASE"
 
 	echo
 	echo "Summary of actions:"
 	echo "- A new branch '$BRANCH' was created, based on '$BASE'"
 	echo "- You are now on branch '$BRANCH'"
 	echo
+}
+
+load_prefix_with_sprint() {
+  PREFIX=$(git config --get gitflow.prefix.support)
+  if [ "$(git config --get gitflow.sprint.enabled)" == "Y" ]; then
+    SPRINT=$(git config --get gitflow.sprint.current)
+  else
+    SPRINT=""
+  fi
+
+  if [ -n $SPRINT ]; then
+    PREFIX=$SPRINT$PREFIX
+  fi
 }

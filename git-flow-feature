@@ -9,17 +9,17 @@
 #    http://github.com/nvie/gitflow
 #
 # Copyright 2010 Vincent Driessen. All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-# 
+#
 #    1. Redistributions of source code must retain the above copyright notice,
 #       this list of conditions and the following disclaimer.
-# 
+#
 #    2. Redistributions in binary form must reproduce the above copyright
 #       notice, this list of conditions and the following disclaimer in the
 #       documentation and/or other materials provided with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY VINCENT DRIESSEN ``AS IS'' AND ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 # MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -30,27 +30,31 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # The views and conclusions contained in the software and documentation are
 # those of the authors and should not be interpreted as representing official
 # policies, either expressed or implied, of Vincent Driessen.
 #
 
-require_git_repo
-require_gitflow_initialized
-gitflow_load_settings
-PREFIX=$(git config --get gitflow.prefix.feature)
+init() {
+  require_git_repo
+  require_gitflow_initialized
+  gitflow_load_settings
+  load_prefix_with_sprint
+#  PREFIX=$(git config --get gitflow.prefix.feature)
+}
 
 usage() {
 	echo "usage: git flow feature [list] [-v]"
 	echo "       git flow feature start [-F] <name> [<base>]"
-	echo "       git flow feature finish [-rFk] <name|nameprefix>"
+	echo "       git flow feature finish [-rFkDS] [<name|nameprefix>]"
 	echo "       git flow feature publish <name>"
 	echo "       git flow feature track <name>"
 	echo "       git flow feature diff [<name|nameprefix>]"
 	echo "       git flow feature rebase [-i] [<name|nameprefix>]"
 	echo "       git flow feature checkout [<name|nameprefix>]"
-	echo "       git flow feature pull <remote> [<name>]"
+	echo "       git flow feature pull [-r] <remote> [<name>]"
+  echo "       git flow feature pullrequest"
 }
 
 cmd_default() {
@@ -143,29 +147,11 @@ expand_nameprefix_arg() {
 	esac
 }
 
-use_current_feature_branch_name() {
-	local current_branch=$(git_current_branch)
-	if startswith "$current_branch" "$PREFIX"; then
-		BRANCH=$current_branch
-		NAME=${BRANCH#$PREFIX}
-	else
-		warn "The current HEAD is no feature branch."
-		warn "Please specify a <name> argument."
-		exit 1
-	fi
-}
-
 expand_nameprefix_arg_or_current() {
 	if [ "$NAME" != "" ]; then
 		expand_nameprefix_arg
 		require_branch "$PREFIX$NAME"
 	else
-		use_current_feature_branch_name
-	fi
-}
-
-name_or_current() {
-	if [ -z "$NAME" ]; then
 		use_current_feature_branch_name
 	fi
 }
@@ -202,7 +188,7 @@ cmd_start() {
 
 	# update the local repo with remote changes, if asked
 	if flag fetch; then
-		git fetch -q "$ORIGIN" "$DEVELOP_BRANCH"
+		git_do fetch -q "$ORIGIN" "$DEVELOP_BRANCH"
 	fi
 
 	# if the origin branch counterpart exists, assert that the local branch
@@ -212,7 +198,7 @@ cmd_start() {
 	fi
 
 	# create branch
-	if ! git checkout -b "$BRANCH" "$BASE"; then
+	if ! git_do checkout -b "$BRANCH" "$BASE"; then
 		die "Could not create feature branch '$BRANCH'"
 	fi
 
@@ -231,8 +217,10 @@ cmd_finish() {
 	DEFINE_boolean fetch false "fetch from $ORIGIN before performing finish" F
 	DEFINE_boolean rebase false "rebase instead of merge" r
 	DEFINE_boolean keep false "keep branch after performing finish" k
+	DEFINE_boolean force_delete false "force delete feature branch after finish" D
+	DEFINE_boolean squash false "squash feature during merge" S
 	parse_args "$@"
-	expand_nameprefix_arg
+	expand_nameprefix_arg_or_current
 
 	# sanity checks
 	require_branch "$BRANCH"
@@ -243,7 +231,7 @@ cmd_finish() {
 		# TODO: detect that we're working on the correct branch here!
 		# The user need not necessarily have given the same $NAME twice here
 		# (although he/she should).
-		# 
+		#
 
 		# TODO: git_is_clean_working_tree() should provide an alternative
 		# exit code for "unmerged changes in working tree", which we should
@@ -269,7 +257,7 @@ cmd_finish() {
 			echo "Merge conflicts not resolved yet, use:"
 			echo "    git mergetool"
 			echo "    git commit"
-			echo 
+			echo
 			echo "You can then complete the finish by running it again:"
 			echo "    git flow feature finish $NAME"
 			echo
@@ -281,16 +269,17 @@ cmd_finish() {
 	require_clean_working_tree
 
 	# update local repo with remote changes first, if asked
-	if has "$ORIGIN/$BRANCH" "$(git_remote_branches)"; then
+	if has "$ORIGIN/$BRANCH" $(git_remote_branches); then
 		if flag fetch; then
-			git fetch -q "$ORIGIN" "$BRANCH"
+			git_do fetch -q "$ORIGIN" "$BRANCH"
+			git_do fetch -q "$ORIGIN" "$DEVELOP_BRANCH"
 		fi
 	fi
 
-	if has "$ORIGIN/$BRANCH" "$(git_remote_branches)"; then
+	if has "$ORIGIN/$BRANCH" $(git_remote_branches); then
 		require_branches_equal "$BRANCH" "$ORIGIN/$BRANCH"
 	fi
-	if has "$ORIGIN/$DEVELOP_BRANCH" "$(git_remote_branches)"; then
+	if has "$ORIGIN/$DEVELOP_BRANCH" $(git_remote_branches); then
 		require_branches_equal "$DEVELOP_BRANCH" "$ORIGIN/$DEVELOP_BRANCH"
 	fi
 
@@ -306,11 +295,17 @@ cmd_finish() {
 	fi
 
 	# merge into BASE
-	git checkout "$DEVELOP_BRANCH"
+	git_do checkout "$DEVELOP_BRANCH"
 	if [ "$(git rev-list -n2 "$DEVELOP_BRANCH..$BRANCH" | wc -l)" -eq 1 ]; then
-		git merge --ff "$BRANCH"
+		git_do merge --ff "$BRANCH"
 	else
-		git merge --no-ff "$BRANCH"
+		if noflag squash; then
+		    git_do merge --no-ff "$BRANCH"
+		else
+			git_do merge --squash "$BRANCH"
+			git_do commit
+			git_do merge "$BRANCH"
+		fi
 	fi
 
 	if [ $? -ne 0 ]; then
@@ -322,7 +317,7 @@ cmd_finish() {
 		echo "There were merge conflicts. To resolve the merge conflict manually, use:"
 		echo "    git mergetool"
 		echo "    git commit"
-		echo 
+		echo
 		echo "You can then complete the finish by running it again:"
 		echo "    git flow feature finish $NAME"
 		echo
@@ -340,12 +335,16 @@ helper_finish_cleanup() {
 
 	# delete branch
 	if flag fetch; then
-		git push "$ORIGIN" ":refs/heads/$BRANCH"
+		git_do push "$ORIGIN" ":refs/heads/$BRANCH"
 	fi
-	
-	
+
+
 	if noflag keep; then
-		git branch -d "$BRANCH"
+		if flag force_delete; then
+			git_do branch -D "$BRANCH"
+		else
+			git_do branch -d "$BRANCH"
+		fi
 	fi
 
 	echo
@@ -368,17 +367,17 @@ cmd_publish() {
 	# sanity checks
 	require_clean_working_tree
 	require_branch "$BRANCH"
-	git fetch -q "$ORIGIN"
+	git_do fetch -q "$ORIGIN"
 	require_branch_absent "$ORIGIN/$BRANCH"
 
 	# create remote branch
-	git push "$ORIGIN" "$BRANCH:refs/heads/$BRANCH"
-	git fetch -q "$ORIGIN"
+	git_do push "$ORIGIN" "$BRANCH:refs/heads/$BRANCH"
+	git_do fetch -q "$ORIGIN"
 
 	# configure remote tracking
-	git config "branch.$BRANCH.remote" "$ORIGIN"
-	git config "branch.$BRANCH.merge" "refs/heads/$BRANCH"
-	git checkout "$BRANCH"
+	git_do config "branch.$BRANCH.remote" "$ORIGIN"
+	git_do config "branch.$BRANCH.merge" "refs/heads/$BRANCH"
+	git_do checkout "$BRANCH"
 
 	echo
 	echo "Summary of actions:"
@@ -395,11 +394,11 @@ cmd_track() {
 	# sanity checks
 	require_clean_working_tree
 	require_branch_absent "$BRANCH"
-	git fetch -q "$ORIGIN"
+	git_do fetch -q "$ORIGIN"
 	require_branch "$ORIGIN/$BRANCH"
 
 	# create tracking branch
-	git checkout -b "$BRANCH" "$ORIGIN/$BRANCH"
+	git_do checkout -b "$BRANCH" "$ORIGIN/$BRANCH"
 
 	echo
 	echo "Summary of actions:"
@@ -430,7 +429,7 @@ cmd_checkout() {
 
 	if [ "$NAME" != "" ]; then
 		expand_nameprefix_arg
-		git checkout "$BRANCH"
+		git_do checkout "$BRANCH"
 	else
 		die "Name a feature branch explicitly."
 	fi
@@ -449,12 +448,12 @@ cmd_rebase() {
 	require_clean_working_tree
 	require_branch "$BRANCH"
 
-	git checkout -q "$BRANCH"
+	git_do checkout -q "$BRANCH"
 	local OPTS=
 	if flag interactive; then
 		OPTS="$OPTS -i"
 	fi
-	git rebase $OPTS "$DEVELOP_BRANCH"
+	git_do rebase $OPTS "$DEVELOP_BRANCH"
 }
 
 avoid_accidental_cross_branch_action() {
@@ -469,6 +468,7 @@ avoid_accidental_cross_branch_action() {
 
 cmd_pull() {
 	#DEFINE_string prefix false 'alternative remote feature branch name prefix' p
+	DEFINE_boolean rebase false "pull with rebase" r
 	parse_remote_name "$@"
 
 	if [ -z "$REMOTE" ]; then
@@ -494,13 +494,47 @@ cmd_pull() {
 
 		# we already have a local branch called like this, so simply pull the
 		# remote changes in
-		git pull -q "$REMOTE" "$BRANCH" || die "Failed to pull from remote '$REMOTE'."
+		if flag rebase; then
+			if ! git_do pull --rebase -q "$REMOTE" "$BRANCH"; then
+				warn "Pull was aborted. There might be conflicts during rebase or '$REMOTE' might be inaccessible."
+				exit 1
+			fi
+		else
+			git_do pull -q "$REMOTE" "$BRANCH" || die "Failed to pull from remote '$REMOTE'."
+		fi
+
 		echo "Pulled $REMOTE's changes into $BRANCH."
 	else
 		# setup the local branch clone for the first time
-		git fetch -q "$REMOTE" "$BRANCH" || die "Fetch failed."     # stores in FETCH_HEAD
-		git branch --no-track "$BRANCH" FETCH_HEAD || die "Branch failed."
-		git checkout -q "$BRANCH" || die "Checking out new local branch failed."
+		git_do fetch -q "$REMOTE" "$BRANCH" || die "Fetch failed."     # stores in FETCH_HEAD
+		git_do branch --no-track "$BRANCH" FETCH_HEAD || die "Branch failed."
+		git_do checkout -q "$BRANCH" || die "Checking out new local branch failed."
 		echo "Created local branch $BRANCH based on $REMOTE's $BRANCH."
 	fi
+}
+
+cmd_pullrequest() {
+  # Load the name of branch
+  name_or_current
+
+  # Only proceeds if the tree is cleaning
+  require_clean_working_tree
+
+  # Load all the required variables needed for pull request
+  require_args_for_pull_request
+
+  hub pull-request -b $REMOTE_BRANCH
+}
+
+load_prefix_with_sprint() {
+  PREFIX=$(git config --get gitflow.prefix.feature)
+  if [ "$(git config --get gitflow.sprint.enabled)" == "Y" ]; then
+    SPRINT=$(git config --get gitflow.sprint.current)
+  else
+    SPRINT=""
+  fi
+
+  if [ -n $SPRINT ]; then
+    PREFIX=$SPRINT$PREFIX
+  fi
 }
