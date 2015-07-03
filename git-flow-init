@@ -362,7 +362,7 @@ cmd_default() {
 			fi
 		fi
 	else
-		git_do config gitflow.sprint.enabled "N"
+		git_do config --unset gitflow.sprint.enabled
 	fi
 
 	# Set default behaviour of git to current
@@ -387,11 +387,8 @@ cmd_default() {
 			die "Install hub and run again git flow init -f"
 		fi
 	else
-		exit 1
+		git_do config --unset gitflow.pullrequest.enabled
 	fi
-
-
-	# TODO: what to do with origin?
 }
 
 cmd_help() {
